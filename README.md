@@ -14,15 +14,11 @@ $LOGSTASH_INSTALL/bin/logstash-plugin install logstash-output-azure_service_bus
 As mentioned above, the compute environment that Logstash is running in must have managed identity enabled. In addition, the managed identity should have permissions to send to the desired queue or topic - typically the `Azure Service Bus Data Sender` role.
 
 Two settings in your Logstash pipeline are required:
-* `service_bus_namespace` -> name of Service Bus deployment
-* `service_bus_entity` -> name of queue or topic
-
-### Example
 ```
 output {
     azure_service_bus {
-        service_bus_namespace => "my-service-bus"
-        service_bus_entity => "queue-or-topic"
+        service_bus_namespace => "service-bus-name"
+        service_bus_entity => "queue-or-topic-name"
     }
 }
 ```
