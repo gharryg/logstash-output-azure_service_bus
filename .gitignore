@@ -1,0 +1,4 @@
+.DS_Store
+.ruby-version
+*.gem
+Gemfile.lock
