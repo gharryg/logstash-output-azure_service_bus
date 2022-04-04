@@ -13,14 +13,14 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
 
   def register
     retry_options = {
-      max: 3,
+      max: 5,
       interval: 1,
       interval_randomness: 0.5,
-      backoff_factor: 2,
+      backoff_factor: 3,
       retry_statuses: [429, 500],
       exceptions: [Faraday::ConnectionFailed, Faraday::TimeoutError, Faraday::RetriableResponse],
       methods: %i[get post],
-      retry_block: ->(_env, _options, retries, exception) { @logger.error("Error (#{exception}) when attempt to send to Service Bus. #{retries + 1} retry(s) left...") }
+      retry_block: ->(_env, _options, retries, exception) { @logger.error("Error (#{exception}) for #{env.method.upcase} #{env.url} - #{retries + 1} retry(s) left") }
     }
     @token_conn = Faraday.new(
       url: 'http://169.254.169.254/metadata/identity/oauth2/token',
