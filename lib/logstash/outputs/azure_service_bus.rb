@@ -13,10 +13,10 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
 
   def register
     retry_options = {
-      max: 5,
+      max: 3,
       interval: 1,
       interval_randomness: 0.5,
-      backoff_factor: 3,
+      backoff_factor: 2,
       retry_statuses: [429, 500],
       exceptions: [Faraday::ConnectionFailed, Faraday::TimeoutError, Faraday::RetriableResponse],
       methods: %i[get post],
@@ -32,7 +32,7 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
     end
     @service_bus_conn = Faraday.new(
       url: "https://#{@service_bus_namespace}.servicebus.windows.net/#{@service_bus_entity}/",
-      request: { timeout: 3 }
+      request: { timeout: 10 }
     ) do |f|
       f.request :retry, retry_options
     end
