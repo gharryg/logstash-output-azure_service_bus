@@ -3,7 +3,6 @@ require 'faraday/retry'
 require 'json'
 require 'logstash/outputs/base'
 
-# An azure_service_bus output that does nothing.
 class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
   concurrency :single
 
@@ -20,7 +19,8 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
       backoff_factor: 2,
       retry_statuses: [429, 500],
       exceptions: [Faraday::ConnectionFailed, Faraday::TimeoutError, Faraday::RetriableResponse],
-      methods: %i[get post]
+      methods: %i[get post],
+      retry_block: ->(_env, _options, retries, exception) { @logger.error("Error (#{exception}) when attempt to send to Service Bus. #{retries + 1} retry(s) left...") }
     }
     @token_conn = Faraday.new(
       url: 'http://169.254.169.254/metadata/identity/oauth2/token',
@@ -59,9 +59,9 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
       req.body = JSON.generate(messages)
       req.headers = { 'Authorization' => "Bearer #{@access_token}", 'Content-Type' => 'application/vnd.microsoft.servicebus.json' }
     end
-    raise "Error while sending message to Service Bus: #{response.body}" if response.status != 201
+    raise "Error while sending message to Service Bus: HTTP #{response.status}" if response.status != 201
 
-    @logger.info("Sent #{messages.length} message(s) to Service Bus")
+    @logger.debug("Sent #{messages.length} message(s) to Service Bus")
   end
 
   def access_token_needs_refresh?
