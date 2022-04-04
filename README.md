@@ -10,7 +10,7 @@ To install, use the plugin tool that is part of your Logstash installation:
 $LOGSTASH_INSTALL/bin/logstash-plugin install logstash-output-azure_service_bus
 ```
 
-## Configuration
+## Pipeline Configuration
 As mentioned above, the compute environment that Logstash is running in must have managed identity enabled. In addition, the managed identity should have permissions to send to the desired queue or topic - typically the `Azure Service Bus Data Sender` role.
 
 Two settings in your Logstash pipeline are required:
@@ -22,3 +22,6 @@ output {
     }
 }
 ```
+
+## Service Bus Configuration
+This plugin will retry sending messages if the Service Bus connection times out or returns a bad response. To avoid idempotence issues, you should enable duplicate detection on the destination queue or topic.

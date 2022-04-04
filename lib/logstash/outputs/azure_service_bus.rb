@@ -19,7 +19,8 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
       interval_randomness: 0.5,
       backoff_factor: 2,
       retry_statuses: [429, 500],
-      exceptions: [Faraday::ConnectionFailed, Faraday::TimeoutError, Faraday::RetriableResponse, Net::ReadTimeout]
+      exceptions: [Faraday::ConnectionFailed, Faraday::TimeoutError, Faraday::RetriableResponse],
+      methods: %i[get post]
     }
     @token_conn = Faraday.new(
       url: 'http://169.254.169.254/metadata/identity/oauth2/token',
