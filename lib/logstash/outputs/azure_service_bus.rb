@@ -20,7 +20,7 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
       retry_statuses: [429, 500],
       exceptions: [Faraday::ConnectionFailed, Faraday::TimeoutError, Faraday::RetriableResponse],
       methods: %i[get post],
-      retry_block: ->(_env, _options, retries, exception) { @logger.error("Error (#{exception}) for #{env.method.upcase} #{env.url} - #{retries + 1} retry(s) left") }
+      retry_block: ->(env, _options, retries, exception) { @logger.error("Error (#{exception}) for #{env.method.upcase} #{env.url} - #{retries + 1} retry(s) left") }
     }
     @token_conn = Faraday.new(
       url: 'http://169.254.169.254/metadata/identity/oauth2/token',

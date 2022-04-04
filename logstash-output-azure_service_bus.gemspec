@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name          = 'logstash-output-azure_service_bus'
-  s.version       = '0.1.5'
+  s.version       = '0.1.6'
   s.licenses      = ['Apache-2.0']
   s.summary       = 'Send Logstash messages to Azure Service Bus.'
   s.homepage      = 'https://github.com/gharryg/logstash-output-azure_service_bus'
