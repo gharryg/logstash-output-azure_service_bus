@@ -31,7 +31,7 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
     end
     @service_bus_conn = Faraday.new(
       url: "https://#{@service_bus_namespace}.servicebus.windows.net/#{@service_bus_entity}/",
-      request: { timeout: 1 }
+      request: { timeout: 3 }
     ) do |f|
       f.request :retry, retry_options
     end
