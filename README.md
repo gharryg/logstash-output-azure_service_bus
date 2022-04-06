@@ -7,7 +7,7 @@ This plugin is hosted on RubyGems.org: [https://rubygems.org/gems/logstash-outpu
 ## Install
 To install, use the plugin tool that is part of your Logstash installation:
 ```
-$LOGSTASH_INSTALL/bin/logstash-plugin install logstash-output-azure_service_bus
+$LOGSTASH_PATH/bin/logstash-plugin install logstash-output-azure_service_bus
 ```
 
 ## Pipeline Configuration
@@ -19,6 +19,26 @@ output {
     azure_service_bus {
         service_bus_namespace => "service-bus-name"
         service_bus_entity => "queue-or-topic-name"
+    }
+}
+```
+There is one optional setting (`messageid_field`) which sets the Service Bus `MessageId` value to an existing, unique field. If this setting is not used, Service Bus will generate an id when the message is created.  The value of the provided field _must_ be unique or Service Bus will reject the message. A sample config might look like:
+```
+input { ... }
+filter {
+    uuid {
+        target => "[@metadata][uuid]"
+    }
+}
+output {
+    azure_service_bus {
+        service_bus_namespace => "service-bus-name"
+        service_bus_entity => "queue-or-topic-name"
+        messageid_field => "[@metadata][uuid]"
+    }
+    elasticsearch {
+        ...
+        document_id => "%{[@metadata][uuid]}"
     }
 }
 ```
