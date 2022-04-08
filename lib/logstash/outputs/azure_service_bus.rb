@@ -14,14 +14,14 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
 
   def register
     retry_options = {
-      max: 3,
+      max: 5,
       interval: 1,
       interval_randomness: 0.5,
       backoff_factor: 2,
       retry_statuses: [429, 500],
       exceptions: [Faraday::ConnectionFailed, Faraday::TimeoutError, Faraday::RetriableResponse],
       methods: %i[get post],
-      retry_block: ->(env, _options, retries, exception) { @logger.warn("Error (#{exception}) for #{env.method.upcase} #{env.url} - #{retries + 1} retry(s) left") }
+      retry_block: ->(env, _options, retries, exception) { @logger.warn("Problem (#{exception}) for #{env.method.upcase} #{env.url} - #{retries + 1} retry(s) left") }
     }
     @token_conn = Faraday.new(
       url: 'http://169.254.169.254/metadata/identity/oauth2/token',
@@ -60,11 +60,15 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
 
   def post_messages(messages)
     refresh_access_token if access_token_needs_refresh?
-    response = @service_bus_conn.post('messages') do |req|
-      req.body = JSON.generate(messages)
-      req.headers = { 'Authorization' => "Bearer #{@access_token}", 'Content-Type' => 'application/vnd.microsoft.servicebus.json' }
+    begin
+      response = @service_bus_conn.post('messages') do |req|
+        req.body = JSON.generate(messages)
+        req.headers = { 'Authorization' => "Bearer #{@access_token}", 'Content-Type' => 'application/vnd.microsoft.servicebus.json' }
+      end
+    rescue StandardError => e
+      @logger.error("Error (#{e}) while sending message to Service Bus")
     end
-    raise "Error while sending message to Service Bus: HTTP #{response.status}" if response.status != 201
+    @logger.error("HTTP error while sending message to Service Bus: HTTP #{response.status}") if response.status != 201
 
     @logger.debug("Sent #{messages.length} message(s) to Service Bus")
   end
