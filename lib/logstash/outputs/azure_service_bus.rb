@@ -68,9 +68,10 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
     rescue StandardError => e
       @logger.error("Error (#{e}) while sending message to Service Bus")
     end
-    @logger.error("HTTP error while sending message to Service Bus: HTTP #{response.status}") if response.status != 201
-
-    @logger.debug("Sent #{messages.length} message(s) to Service Bus")
+    if !response.nil?
+      @logger.error("Error while sending message to Service Bus: HTTP #{response.status}") if response.status != 201
+      @logger.debug("Sent #{messages.length} message(s) to Service Bus") if response.status == 200
+    end
   end
 
   def access_token_needs_refresh?
