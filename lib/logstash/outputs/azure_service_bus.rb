@@ -18,7 +18,7 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
       interval: 1,
       interval_randomness: 0.5,
       backoff_factor: 2,
-      exceptions: [Faraday::ConnectionFailed, Faraday::TimeoutError, Faraday::RetriableResponse],
+      exceptions: [Faraday::ConnectionFailed, Faraday::TimeoutError, Faraday::RetriableResponse, Errno::ECONNRESET],
       methods: [], # Empty -> all methods
       retry_statuses: [401, 403, 404, 410, 429, 500], # https://docs.microsoft.com/en-us/rest/api/servicebus/send-message-batch#response-codes
       retry_block: lambda do |env, _options, _retries, exception|
