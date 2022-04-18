@@ -43,5 +43,5 @@ output {
 }
 ```
 
-## Service Bus Configuration
-This plugin will retry sending messages if the Service Bus connection times out or returns a bad response. To avoid idempotence issues, you should enable duplicate detection on the destination queue or topic.
+## Retry
+This plugin will retry sending messages _indefinitely_ if Service Bus times out or returns a [documented bad response](https://docs.microsoft.com/en-us/rest/api/servicebus/send-message-batch#response-codes) (except 400). To avoid idempotence issues, you should enable duplicate detection on the destination queue or topic.

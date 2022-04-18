@@ -13,30 +13,33 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
   config :messageid_field, :validate => :string
 
   def register
-    retry_options = {
-      max: 5,
+    service_bus_retry_options = {
+      max: Float::MAX, # Essentially retries indefinitely
       interval: 1,
       interval_randomness: 0.5,
       backoff_factor: 2,
-      retry_statuses: [429, 500],
       exceptions: [Faraday::ConnectionFailed, Faraday::TimeoutError, Faraday::RetriableResponse],
-      methods: %i[get post],
-      retry_block: ->(env, _options, retries, exception) { @logger.warn("Problem (#{exception}) for #{env.method.upcase} #{env.url} - #{retries + 1} retry(s) left") }
+      methods: [], # Empty -> all methods
+      retry_statuses: [401, 403, 404, 410, 429, 500], # https://docs.microsoft.com/en-us/rest/api/servicebus/send-message-batch#response-codes
+      retry_block: lambda do |env, _options, _retries, exception|
+        if env.status.nil?
+          @logger.warn("Problem (#{exception}) for #{env.method.upcase} #{env.url}")
+        else
+          @logger.warn("Problem (HTTP #{env.status}) for #{env.method.upcase} #{env.url}")
+        end
+      end,
+      retry_if: lambda do |env, _exc|
+        refresh_access_token if env.status == 401
+        true # Always retry
+      end
     }
-    @token_conn = Faraday.new(
-      url: 'http://169.254.169.254/metadata/identity/oauth2/token',
-      params: { 'api-version' => '2018-02-01', 'resource' => 'https://servicebus.azure.net/' },
-      headers: { 'Metadata' => 'true' },
-      request: { timeout: 4 }
-    ) do |f|
-      f.request :retry, retry_options
-    end
     @service_bus_conn = Faraday.new(
       url: "https://#{@service_bus_namespace}.servicebus.windows.net/#{@service_bus_entity}/",
       request: { timeout: 10 }
-    ) do |f|
-      f.request :retry, retry_options
+    ) do |conn|
+      conn.request :retry, service_bus_retry_options
     end
+    @access_token = ''
     refresh_access_token
   end
 
@@ -59,37 +62,37 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
   end
 
   def post_messages(messages)
-    refresh_access_token if access_token_needs_refresh?
-    begin
-      response = @service_bus_conn.post('messages') do |req|
-        req.body = JSON.generate(messages)
-        req.headers = { 'Authorization' => "Bearer #{@access_token}", 'Content-Type' => 'application/vnd.microsoft.servicebus.json' }
-      end
-    rescue StandardError => e
-      @logger.error("Error (#{e}) while sending message to Service Bus")
+    response = @service_bus_conn.post('messages') do |req|
+      req.body = JSON.generate(messages)
+      req.headers = { 'Authorization' => "Bearer #{@access_token}", 'Content-Type' => 'application/vnd.microsoft.servicebus.json' }
     end
-    if !response.nil?
-      @logger.error("Error while sending message to Service Bus: HTTP #{response.status}") if response.status != 201
-      @logger.debug("Sent #{messages.length} message(s) to Service Bus") if response.status == 200
+  rescue StandardError => e
+    # Hopefully we never make it here and "throw away" messages since we have an agressive retry strategy.
+    @logger.error("Error (#{e}) while sending message to Service Bus")
+  else
+    if response.status == 200
+      @logger.debug("Sent #{messages.length} message(s) to Service Bus")
+    else
+      @logger.error("Error while sending message to Service Bus: HTTP #{response.status}")
     end
-  end
-
-  def access_token_needs_refresh?
-    Time.now.to_i - 60 > @access_token_expiration # Refresh the access token if it will expire within 60 seconds.
   end
 
   def refresh_access_token
     @logger.info('Refreshing Azure access token')
     begin
-      response = @token_conn.get
-    rescue Faraday::ConnectionFailed => e
-      @logger.error('Unable to connect to the Azure Instance Metadata Service')
-      raise e
+      response = Faraday.get('http://169.254.169.254/metadata/identity/oauth2/token', params: { 'api-version' => '2018-02-01', 'resource' => 'https://servicebus.azure.net/' }) do |req|
+        req.headers = { 'Metadata' => 'true' }
+        req.options.timeout = 4
+      end
+    rescue StandardError => e # We just catch everything and move on since @service_bus_conn will handle retries.
+      @logger.error("Error while fetching access token: #{e}")
+    else
+      if response.status == 200
+        data = JSON.parse(response.body)
+        @access_token = data['access_token']
+      else
+        @logger.error("HTTP error when fetching access token: #{response.body}")
+      end
     end
-    raise "Unable to fetch token: #{response.body}" if response.status != 200
-
-    data = JSON.parse(response.body)
-    @access_token = data['access_token']
-    @access_token_expiration = data['expires_on'].to_i
   end
 end
