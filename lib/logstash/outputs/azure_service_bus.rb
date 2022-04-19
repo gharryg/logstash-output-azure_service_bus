@@ -80,7 +80,7 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
   def refresh_access_token
     @logger.info('Refreshing Azure access token')
     begin
-      response = Faraday.get('http://169.254.169.254/metadata/identity/oauth2/token', params: { 'api-version' => '2018-02-01', 'resource' => 'https://servicebus.azure.net/' }) do |req|
+      response = Faraday.get('http://169.254.169.254/metadata/identity/oauth2/token', { 'api-version' => '2018-02-01', 'resource' => 'https://servicebus.azure.net/' }) do |req|
         req.headers = { 'Metadata' => 'true' }
         req.options.timeout = 4
       end
