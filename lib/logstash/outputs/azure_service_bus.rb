@@ -23,9 +23,9 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
       retry_statuses: [401, 403, 404, 410, 429, 500], # https://docs.microsoft.com/en-us/rest/api/servicebus/send-message-batch#response-codes
       retry_block: lambda do |env, _options, _retries, exception|
         if env.status.nil?
-          @logger.warn("Problem while sending message(s) to Service Bus: #{exception.inspect}")
+          @logger.warn("Problem (#{exception.inspect}) while sending message(s) to Service Bus. Retrying...")
         else
-          @logger.warn("Problem while sending message(s) to Service Bus: HTTP #{env.status}")
+          @logger.warn("Problem (HTTP #{env.status}) while sending message(s) to Service Bus. Retrying...")
           if env.status == 401
             refresh_access_token
             env.request_headers['Authorization'] = "Bearer #{@access_token}"
