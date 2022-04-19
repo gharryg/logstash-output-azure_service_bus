@@ -26,10 +26,13 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
           @logger.warn("Problem (#{exception}) for #{env.method.upcase} #{env.url}")
         else
           @logger.warn("Problem (HTTP #{env.status}) for #{env.method.upcase} #{env.url}")
+          if env.status == 401
+            refresh_access_token
+            env.request_headers['Authorization'] = "Bearer #{@access_token}"
+          end
         end
       end,
-      retry_if: lambda do |env, _exc|
-        refresh_access_token if env.status == 401
+      retry_if: lambda do |_env, _exc|
         true # Always retry
       end
     }
@@ -78,11 +81,11 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
   end
 
   def refresh_access_token
-    @logger.info('Refreshing Azure access token')
+    @logger.info('Refreshing Azure access token...')
     begin
       response = Faraday.get('http://169.254.169.254/metadata/identity/oauth2/token', { 'api-version' => '2018-02-01', 'resource' => 'https://servicebus.azure.net/' }) do |req|
         req.headers = { 'Metadata' => 'true' }
-        req.options.timeout = 4
+        req.options.timeout = 10
       end
     rescue StandardError => e # We just catch everything and move on since @service_bus_conn will handle retries.
       @logger.error("Error while fetching access token: #{e}")
@@ -90,6 +93,7 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
       if response.status == 200
         data = JSON.parse(response.body)
         @access_token = data['access_token']
+        @logger.info('Successfully refreshed Azure access token')
       else
         @logger.error("HTTP error when fetching access token: #{response.body}")
       end
