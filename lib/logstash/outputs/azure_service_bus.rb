@@ -70,7 +70,7 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
     # Hopefully we never make it here and "throw away" messages since we have an agressive retry strategy.
     @logger.error("Error (#{e}) while sending message to Service Bus")
   else
-    if response.status == 200
+    if response.status == 201
       @logger.debug("Sent #{messages.length} message(s) to Service Bus")
     else
       @logger.error("Error while sending message to Service Bus: HTTP #{response.status}")
