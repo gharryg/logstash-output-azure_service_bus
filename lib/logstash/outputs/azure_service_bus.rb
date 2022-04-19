@@ -23,9 +23,9 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
       retry_statuses: [401, 403, 404, 410, 429, 500], # https://docs.microsoft.com/en-us/rest/api/servicebus/send-message-batch#response-codes
       retry_block: lambda do |env, _options, _retries, exception|
         if env.status.nil?
-          @logger.warn("Problem (#{exception}) for #{env.method.upcase} #{env.url}")
+          @logger.warn("Problem while sending message(s) to Service Bus: #{exception.inspect}")
         else
-          @logger.warn("Problem (HTTP #{env.status}) for #{env.method.upcase} #{env.url}")
+          @logger.warn("Problem while sending message(s) to Service Bus: HTTP #{env.status}")
           if env.status == 401
             refresh_access_token
             env.request_headers['Authorization'] = "Bearer #{@access_token}"
@@ -71,12 +71,12 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
     end
   rescue StandardError => e
     # Hopefully we never make it here and "throw away" messages since we have an agressive retry strategy.
-    @logger.error("Error (#{e}) while sending message to Service Bus")
+    @logger.error("Error while sending message(s) to Service Bus: #{e.inspect}")
   else
     if response.status == 201
       @logger.debug("Sent #{messages.length} message(s) to Service Bus")
     else
-      @logger.error("Error while sending message to Service Bus: HTTP #{response.status}")
+      @logger.error("Error while sending message(s) to Service Bus: HTTP #{response.status}")
     end
   end
 
@@ -88,14 +88,14 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
         req.options.timeout = 10
       end
     rescue StandardError => e # We just catch everything and move on since @service_bus_conn will handle retries.
-      @logger.error("Error while fetching access token: #{e}")
+      @logger.error("Error while fetching access token: #{e.inpsect}")
     else
       if response.status == 200
         data = JSON.parse(response.body)
         @access_token = data['access_token']
         @logger.info('Successfully refreshed Azure access token')
       else
-        @logger.error("HTTP error when fetching access token: #{response.body}")
+        @logger.error("Error while fetching access token: HTTP #{response.status}")
       end
     end
   end
