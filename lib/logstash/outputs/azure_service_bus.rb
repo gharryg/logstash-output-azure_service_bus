@@ -20,7 +20,7 @@ class LogStash::Outputs::AzureServiceBus < LogStash::Outputs::Base
       backoff_factor: 2,
       exceptions: [Faraday::ConnectionFailed, Faraday::TimeoutError, Faraday::RetriableResponse, Faraday::SSLError],
       methods: [], # Empty -> all methods
-      retry_statuses: [401, 403, 404, 410, 429, 500], # https://docs.microsoft.com/en-us/rest/api/servicebus/send-message-batch#response-codes
+      retry_statuses: [401, 403, 404, 410, 429, 500, 503], # https://docs.microsoft.com/en-us/rest/api/servicebus/send-message-batch#response-codes
       retry_block: lambda do |env, _options, _retries, exception|
         if env.status.nil?
           @logger.warn("Problem (#{exception.inspect}) while sending message(s) to Service Bus. Retrying...")

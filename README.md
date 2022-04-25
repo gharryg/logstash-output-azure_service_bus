@@ -44,4 +44,4 @@ output {
 ```
 
 ## Retry
-This plugin will retry sending messages _indefinitely_ if Service Bus times out or returns a [documented bad response](https://docs.microsoft.com/en-us/rest/api/servicebus/send-message-batch#response-codes) (except 400). To avoid idempotence issues, you should enable duplicate detection on the destination queue or topic.
+This plugin will retry sending messages _indefinitely_ if Service Bus times out or returns [certain bad responses](/lib/logstash/outputs/azure_service_bus.rb#L23). To avoid idempotence issues, you should enable duplicate detection on the destination queue or topic.
